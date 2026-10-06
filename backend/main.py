@@ -27,6 +27,7 @@ class CompileRequest(BaseModel):
     url: str
     moods: List[str] = Field(default_factory=lambda: ["lucu", "marah"])
     min_score: int = 70
+    output: str = "standard"
     oai_base_url: str = ""
     oai_api_key: str = ""
     oai_model: str = ""
@@ -86,7 +87,8 @@ def _dl_full(url: str, vid: str) -> str:
     return os.path.join(WORK, cands[0])
 
 
-def _sub_ass(path: str, words, s: float, e: float, transcript: str = "") -> bool:
+def _sub_ass(path: str, words, s: float, e: float, transcript: str = "",
+             w: int = 1280, h: int = 720, fs: int = 44, mv: int = 60) -> bool:
     if not words and transcript:
         ws = transcript.split()
         dur = max(1.0, e - s)
@@ -103,13 +105,13 @@ def _sub_ass(path: str, words, s: float, e: float, transcript: str = "") -> bool
             evts.append((ch[0][0] + s, ch[-1][1] + s, " ".join(w[2] for w in ch)))
     else:
         return False
-    head = ("[Script Info]\nScriptType: v4.00+\nPlayResX: 1280\nPlayResY: 720\n"
+    head = (f"[Script Info]\nScriptType: v4.00+\nPlayResX: {w}\nPlayResY: {h}\n"
             "ScaledBorderAndShadow: yes\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, "
             "PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, "
             "StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, "
             "Alignment, MarginL, MarginR, MarginV, Encoding\n"
-            "Style: Default,Arial,44,&H00FFFFFF,&H000019FF,&H80000000,&H00000000,0,0,0,0,"
-            "100,100,0,0,1,2,0,2,40,40,60,1\n\n[Events]\n"
+            f"Style: Default,Arial,{fs},&H00FFFFFF,&H000019FF,&H80000000,&H00000000,0,0,0,0,"
+            f"100,100,0,0,1,2,0,2,40,40,{mv},1\n\n[Events]\n"
             "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n")
 
     def at(t):
@@ -157,16 +159,22 @@ def _run_compile(jid: str, req: CompileRequest):
         res = _analyze(req.url, " dan ".join(req.moods), oai)
         clips = [c for c in res.get("clips", []) if int(c.get("virality_score", 0)) >= req.min_score]
         clips.sort(key=lambda c: int(c.get("virality_score", 0)), reverse=True)
+        short = (req.output or "standard").lower() == "short"
+        cap_total = 170.0 if short else 900.0
+        min_total = 20.0 if short else 600.0
         picked, total = [], 0.0
         for c in clips:
             d = max(1.0, float(c.get("end_time", 0)) - float(c.get("start_time", 0)))
-            if total + d <= 900.0:
+            if total + d <= cap_total:
                 picked.append(c)
                 total += d
-            if total >= 600.0:
-                break
+            if total >= (60.0 if short else min_total):
+                if short and total >= 60.0:
+                    break
+                if not short and total >= min_total:
+                    break
         clips = sorted(picked, key=lambda c: float(c.get("start_time", 0)))
-        if not clips or total < 60.0:
+        if not clips or total < (20.0 if short else 60.0):
             _jobs[jid] = {"pct": 0, "stage": "error", "done": True,
                            "error": f"momen kurang (cuma {total:.0f}s). Turunkan ambang skor."}
             return
@@ -189,10 +197,22 @@ def _run_compile(jid: str, req: CompileRequest):
                 os.remove(wavp)
             except Exception:
                 pass
-            ok = _sub_ass(assp, words, 0, e - s, c.get("transcript", "")) if (words or c.get("transcript")) else False
-            vf = "subtitles='" + assp.replace("\\", "/").replace(":", "\\:") + "'" if ok else "null"
+            ok = _sub_ass(assp, words, 0, e - s, c.get("transcript", ""),
+                          1080, 1920, 64, 280) if (short and (words or c.get("transcript"))) else (
+                 _sub_ass(assp, words, 0, e - s, c.get("transcript", "")) if (words or c.get("transcript")) else False)
+            subf = "subtitles='" + assp.replace("\\", "/").replace(":", "\\:") + "'" if ok else None
+            if short:
+                vf = ("[0:v]split[a][b];"
+                      "[a]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,gblur=sigma=40[bg];"
+                      "[b]scale=1080:-2[fg];"
+                      "[bg][fg]overlay=(W-w)/2:(H-h)/2[v]" +
+                      (";[v]" + subf + "[vout]" if subf else ";[v]null[vout]"))
+                vmap = ["-map", "[vout]", "-map", "0:a?"]
+            else:
+                vf = subf if subf else "null"
+                vmap = []
             subprocess.run(["ffmpeg", "-y", "-v", "error", "-ss", str(s), "-t", str(round(e - s, 1)),
-                            "-i", src, "-vf", vf, "-c:v", "libx264", "-preset", "veryfast",
+                            "-i", src, "-vf", vf] + vmap + ["-c:v", "libx264", "-preset", "veryfast",
                             "-crf", "23", "-c:a", "aac", segp],
                            check=True, timeout=900,
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -203,7 +223,7 @@ def _run_compile(jid: str, req: CompileRequest):
         with open(lst, "w", encoding="utf-8") as f:
             for sp in segs:
                 f.write(f"file '{sp.replace(chr(39), chr(39)+chr(92)+chr(39))}'\n")
-        out = os.path.join(WORK, f"{vid}_kompilasi.mp4")
+        out = os.path.join(WORK, f"{vid}_short.mp4" if short else f"{vid}_kompilasi.mp4")
         subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "concat", "-safe", "0",
                         "-i", lst, "-c", "copy", out],
                        check=True, timeout=900,

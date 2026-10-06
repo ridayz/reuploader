@@ -5,6 +5,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 export default function App() {
   const [url, setUrl] = useState('');
   const [moods, setMoods] = useState<string[]>(['lucu', 'marah']);
+  const [output, setOutput] = useState<'short' | 'standard'>('standard');
   const [minScore, setMinScore] = useState(70);
   const [agentUrl, setAgentUrl] = useState(
     () => localStorage.getItem('reup_agent_url') || 'http://127.0.0.1:20128/v1'
@@ -37,6 +38,7 @@ export default function App() {
           url: url.trim(),
           moods,
           min_score: minScore,
+          output,
           oai_base_url: agentUrl.trim(),
           oai_api_key: agentKey.trim(),
           oai_model: model,
@@ -87,6 +89,14 @@ export default function App() {
               {m === 'lucu' ? '😂' : m === 'marah' ? '😡' : m === 'sedih' ? '😢' : '🤣'} {m}
             </div>
           ))}
+        </div>
+
+        <label>Format output</label>
+        <div className="moods">
+          <div className={'mood' + (output === 'short' ? ' on' : '')}
+            onClick={() => setOutput('short')}>📱 Short (vertikal, ≤3 mnt)</div>
+          <div className={'mood' + (output === 'standard' ? ' on' : '')}
+            onClick={() => setOutput('standard')}>🖥️ Standar (landscape, 10–15 mnt)</div>
         </div>
 
         <label>Ambang skor virality: {minScore}</label>
