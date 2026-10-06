@@ -7,6 +7,7 @@ export default function App() {
   const [moods, setMoods] = useState<string[]>(['lucu', 'marah']);
   const [output, setOutput] = useState<'short' | 'standard'>('standard');
   const [minScore, setMinScore] = useState(70);
+  const [subs, setSubs] = useState(false);
   const [agentUrl, setAgentUrl] = useState(
     () => localStorage.getItem('reup_agent_url') || 'http://127.0.0.1:20128/v1'
   );
@@ -15,9 +16,14 @@ export default function App() {
   );
   const [model, setModel] = useState('agnes/agnes-3.0-flash');
   const [busy, setBusy] = useState(false);
+  const [edLines, setEdLines] = useState<string[]>(['', '', '']);
+  const [edY, setEdY] = useState(300);
+  const [edSize, setEdSize] = useState(96);
+  const [edThumb, setEdThumb] = useState('');
+  const [edBusy, setEdBusy] = useState(false);
   const [prog, setProg] = useState({ pct: 0, stage: '' });
   const [result, setResult] = useState<null | {
-    file: string; title: string; caption: string; moments: number; minutes: number;
+    file: string; title: string; caption: string; moments: number; minutes: number; thumb?: string;
   }>(null);
   const [error, setError] = useState('');
 
@@ -25,7 +31,7 @@ export default function App() {
     setMoods((p) => (p.includes(m) ? p.filter((x) => x !== m) : [...p, m]));
 
   const compile = async () => {
-    if (!url.trim() || !agentKey.trim() || moods.length === 0 || busy) return;
+    if (!url.trim() || !agentKey.trim() || busy) return;
     setBusy(true);
     setError('');
     setResult(null);
@@ -39,6 +45,7 @@ export default function App() {
           moods,
           min_score: minScore,
           output,
+          subtitles: subs,
           oai_base_url: agentUrl.trim(),
           oai_api_key: agentKey.trim(),
           oai_model: model,
@@ -54,7 +61,7 @@ export default function App() {
           if (pr.error) throw new Error(pr.error);
           setResult({
             file: pr.file, title: pr.title, caption: pr.caption,
-            moments: pr.moments, minutes: pr.minutes,
+            moments: pr.moments, minutes: pr.minutes, thumb: pr.thumb,
           });
           break;
         }
@@ -81,7 +88,7 @@ export default function App() {
         <input type="text" placeholder="https://www.youtube.com/watch?v=..." value={url}
           onChange={(e) => setUrl(e.target.value)} />
 
-        <label>Mood momen</label>
+        <label>Mood momen <span style={{ fontWeight: 400, textTransform: 'none' }}>(opsional — kosongkan = semua momen)</span></label>
         <div className="moods">
           {['lucu', 'marah', 'sedih', 'kocak'].map((m) => (
             <div key={m} className={'mood' + (moods.includes(m) ? ' on' : '')}
@@ -99,10 +106,6 @@ export default function App() {
             onClick={() => setOutput('standard')}>🖥️ Standar (landscape, 10–15 mnt)</div>
         </div>
 
-        <label>Ambang skor virality: {minScore}</label>
-        <input type="range" min={40} max={95} value={minScore}
-          onChange={(e) => setMinScore(Number(e.target.value))} style={{ width: '100%' }} />
-
         <label>Agent Base URL</label>
         <input type="text" value={agentUrl}
           onChange={(e) => { setAgentUrl(e.target.value); localStorage.setItem('reup_agent_url', e.target.value); }} />
@@ -113,6 +116,12 @@ export default function App() {
 
         <label>Model</label>
         <input type="text" value={model} onChange={(e) => setModel(e.target.value)} />
+
+        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.9rem', textTransform: 'none', fontSize: '0.9rem', color: 'var(--text)' }}>
+          <input type="checkbox" checked={subs} onChange={(e) => setSubs(e.target.checked)}
+            style={{ width: '18px', height: '18px', accentColor: '#a855f7' }} />
+          📝 Subtitle bakar (untuk penonton tuli)
+        </label>
 
         <button className="btn" disabled={busy} onClick={compile}>
           {busy ? '⏳ Merakit...' : '🔥 Rakit Kompilasi'}
@@ -132,7 +141,61 @@ export default function App() {
           <h3 style={{ margin: '0 0 0.25rem' }}>{result.title}</h3>
           <div className="sub">{result.moments} momen · {result.minutes} menit</div>
           <video controls src={`/api/compile-file/${result.file}`} />
+          {result.thumb && (
+            <div style={{ marginTop: '0.75rem' }}>
+              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--muted)', marginBottom: '0.35rem' }}>
+                🖼️ THUMBNAIL (klik buat download)
+              </div>
+              <a href={`/api/compile-file/${result.thumb}`} download style={{ display: 'inline-block' }}>
+                <img src={`/api/compile-file/${result.thumb}`} alt="thumbnail"
+                  style={{ width: '100%', maxWidth: '480px', borderRadius: '12px', border: '1px solid var(--border)' }} />
+              </a>
+            </div>
+          )}
+          <div style={{ marginTop: '0.75rem', padding: '0.75rem', borderRadius: '10px', border: '1px dashed var(--border)' }}>
+            <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--muted)', marginBottom: '0.4rem' }}>
+              🎨 EDIT THUMBNAIL MANUAL (font Black)
+            </div>
+            {[0, 1, 2].map((i) => (
+              <input key={i} type="text" placeholder={`Baris ${i + 1}`} value={edLines[i] || ''}
+                onChange={(e) => setEdLines((p) => { const n = [...p]; n[i] = e.target.value; return n; })}
+                style={{ width: '100%', marginBottom: '0.3rem', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', padding: '0.5rem 0.7rem', fontSize: '0.85rem' }} />
+            ))}
+            <label style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>Posisi Y: {edY}</label>
+            <input type="range" min={40} max={1400} value={edY} onChange={(e) => setEdY(Number(e.target.value))} style={{ width: '100%' }} />
+            <label style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>Ukuran font: {edSize}</label>
+            <input type="range" min={40} max={160} value={edSize} onChange={(e) => setEdSize(Number(e.target.value))} style={{ width: '100%' }} />
+            <button className="chip-btn" disabled={edBusy} style={{ marginTop: '0.4rem' }}
+              onClick={async () => {
+                if (edBusy) return;
+                setEdBusy(true);
+                try {
+                  const r = await fetch('/api/thumb-custom', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ video_file: result.file, lines: edLines, y_start: edY, fontsize: edSize }),
+                  });
+                  if (!r.ok) throw new Error(await r.text());
+                  setEdThumb((await r.json()).thumb);
+                } catch (e) {
+                  alert('Gagal: ' + String(e).slice(0, 150));
+                } finally {
+                  setEdBusy(false);
+                }
+              }}>
+              {edBusy ? '⏳ Bikin...' : '🖼️ Bikin thumbnail custom'}
+            </button>
+            {edThumb && (
+              <a href={`/api/compile-file/${edThumb}`} download style={{ display: 'inline-block', marginTop: '0.5rem' }}>
+                <img src={`/api/compile-file/${edThumb}`} alt="custom thumb"
+                  style={{ width: '100%', maxWidth: '480px', borderRadius: '12px', border: '1px solid var(--border)' }} />
+              </a>
+            )}
+          </div>
           <pre className="cap">{result.caption}</pre>
+          <div className="row">
+            <button className="chip-btn" onClick={() => navigator.clipboard.writeText(result.title)}>📋 Copy judul</button>
+            <button className="chip-btn" onClick={() => navigator.clipboard.writeText(`${result.title}\n\n${result.caption}`)}>📋 Copy judul + deskripsi</button>
+          </div>
           <div className="row">
             <a className="chip-btn" href={`/api/compile-file/${result.file}`} download
               style={{ textDecoration: 'none' }}>⬇️ Download MP4</a>
