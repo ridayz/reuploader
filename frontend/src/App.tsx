@@ -16,6 +16,7 @@ export default function App() {
   );
   const [model, setModel] = useState('agnes/agnes-3.0-flash');
   const [busy, setBusy] = useState(false);
+  const [capEdit, setCapEdit] = useState('');
   const [edLines, setEdLines] = useState<string[]>(['', '', '']);
   const [edY, setEdY] = useState(300);
   const [edSize, setEdSize] = useState(96);
@@ -63,6 +64,7 @@ export default function App() {
             file: pr.file, title: pr.title, caption: pr.caption,
             moments: pr.moments, minutes: pr.minutes, thumb: pr.thumb,
           });
+          setCapEdit(pr.caption || '');
           break;
         }
       }
@@ -75,7 +77,7 @@ export default function App() {
 
   const copyCaption = () => {
     if (!result) return;
-    navigator.clipboard.writeText(`${result.title}\n\n${result.caption}`);
+    navigator.clipboard.writeText(`${result.title}\n\n${capEdit}`);
   };
 
   return (
@@ -191,10 +193,13 @@ export default function App() {
               </a>
             )}
           </div>
-          <pre className="cap">{result.caption}</pre>
+          <pre className="cap">{capEdit}</pre>
+          <textarea value={capEdit} onChange={(e) => setCapEdit(e.target.value)} rows={3}
+            placeholder="Ketik deskripsi manual di sini..."
+            style={{ width: '100%', marginTop: '0.5rem', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', padding: '0.6rem 0.7rem', fontSize: '0.82rem', fontFamily: 'inherit' }} />
           <div className="row">
             <button className="chip-btn" onClick={() => navigator.clipboard.writeText(result.title)}>📋 Copy judul</button>
-            <button className="chip-btn" onClick={() => navigator.clipboard.writeText(`${result.title}\n\n${result.caption}`)}>📋 Copy judul + deskripsi</button>
+            <button className="chip-btn" onClick={() => navigator.clipboard.writeText(`${result.title}\n\n${capEdit}`)}>📋 Copy judul + deskripsi</button>
           </div>
           <div className="row">
             <a className="chip-btn" href={`/api/compile-file/${result.file}`} download
