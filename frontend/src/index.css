@@ -1,0 +1,95 @@
+:root {
+  --bg: #0b0e1a;
+  --surface: #141829;
+  --border: rgba(255, 255, 255, 0.08);
+  --primary: #a855f7;
+  --text: #f1f5f9;
+  --muted: #94a3b8;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: radial-gradient(1000px 500px at 20% -10%, rgba(168, 85, 247, 0.15), transparent),
+    radial-gradient(800px 400px at 90% 0%, rgba(236, 72, 153, 0.12), transparent), var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  min-height: 100vh;
+}
+.wrap { max-width: 860px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+h1 {
+  font-size: 1.8rem;
+  background: linear-gradient(90deg, #c084fc, #f472b6);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  margin: 0 0 0.25rem;
+}
+.sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.5rem; }
+.card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+label { display: block; font-size: 0.8rem; font-weight: 700; color: var(--muted); margin: 0.9rem 0 0.35rem; text-transform: uppercase; letter-spacing: 0.04em; }
+input[type='text'], input[type='password'], select {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 0.6rem 0.8rem;
+  font-size: 0.9rem;
+}
+.moods { display: flex; gap: 0.6rem; margin-top: 0.4rem; }
+.mood {
+  flex: 1;
+  text-align: center;
+  padding: 0.6rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+.mood.on { border-color: var(--primary); background: rgba(168, 85, 247, 0.15); color: #fff; }
+.btn {
+  display: inline-block;
+  margin-top: 1.25rem;
+  padding: 0.7rem 1.6rem;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 800;
+  cursor: pointer;
+  color: #fff;
+  background: linear-gradient(90deg, #a855f7, #ec4899);
+}
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.bar { height: 10px; border-radius: 6px; background: rgba(255, 255, 255, 0.08); overflow: hidden; margin-top: 0.6rem; }
+.bar > div { height: 100%; border-radius: 6px; background: linear-gradient(90deg, #a855f7, #ec4899); transition: width 0.6s ease; }
+.meta { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--primary); margin-top: 0.4rem; font-weight: 700; }
+video { width: 100%; border-radius: 12px; margin-top: 1rem; background: #000; }
+.row { display: flex; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap; }
+.chip-btn {
+  padding: 0.45rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  background: rgba(168, 85, 247, 0.1);
+  color: #e9d5ff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+pre.cap {
+  white-space: pre-wrap;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.7rem;
+  font-size: 0.82rem;
+  margin-top: 0.75rem;
+}
